@@ -19,6 +19,7 @@ function AudioCapture() {
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     // Set up transcription progress listener
@@ -32,6 +33,9 @@ function AudioCapture() {
       // Cleanup
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
       }
       if (durationIntervalRef.current) {
         clearInterval(durationIntervalRef.current);
@@ -55,9 +59,8 @@ function AudioCapture() {
     );
     const sourceId = screenSource ? screenSource.id : sources[0].id;
 
-    // Get user media with audio AND video constraint (required for desktop capture)
-    // We'll only use the audio track
-    const stream = await (navigator.mediaDevices as any).getUserMedia({
+    // Get system audio stream
+    const systemStream = await (navigator.mediaDevices as any).getUserMedia({
       audio: {
         mandatory: {
           chromeMediaSource: "desktop",
@@ -76,12 +79,41 @@ function AudioCapture() {
     });
 
     // Stop video tracks as we only want audio
-    stream.getVideoTracks().forEach((track: MediaStreamTrack) => track.stop());
+    systemStream
+      .getVideoTracks()
+      .forEach((track: MediaStreamTrack) => track.stop());
 
-    // Create audio-only stream
-    const audioStream = new MediaStream(stream.getAudioTracks());
+    // Get microphone stream
+    const micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      },
+    });
 
-    return audioStream;
+    // Create Web Audio API context to mix both streams
+    const audioContext = new AudioContext();
+    audioContextRef.current = audioContext;
+
+    // Create sources from both streams
+    const systemSource = audioContext.createMediaStreamSource(systemStream);
+    const micSource = audioContext.createMediaStreamSource(micStream);
+
+    // Create a destination to mix both
+    const destination = audioContext.createMediaStreamDestination();
+
+    // Connect both sources to the destination
+    systemSource.connect(destination);
+    micSource.connect(destination);
+
+    console.log("✅ Mixed stream created: System Audio + Microphone");
+    console.log("System audio tracks:", systemStream.getAudioTracks().length);
+    console.log("Microphone tracks:", micStream.getAudioTracks().length);
+    console.log("Mixed tracks:", destination.stream.getAudioTracks().length);
+
+    // Return the mixed stream
+    return destination.stream;
   };
 
   const startMicrophoneRecording = async () => {
@@ -175,6 +207,13 @@ function AudioCapture() {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
 
+      // Clean up audio context
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+        console.log("🔊 AudioContext closed");
+      }
+
       if (durationIntervalRef.current) {
         clearInterval(durationIntervalRef.current);
         durationIntervalRef.current = null;
@@ -244,9 +283,9 @@ function AudioCapture() {
 
       <div className="info-banner">
         <p>
-          <strong>Testing Mode:</strong> Transcription temporarily disabled.
-          Recordings are saved to your temp folder. Check console (F12) for file
-          paths and detailed logs.
+          <strong>System Audio Mode:</strong> Captures both system audio AND
+          your microphone (perfect for MS Teams calls!). Recordings are saved to
+          your temp folder. Check console (F12) for file paths.
         </p>
       </div>
 
@@ -262,7 +301,7 @@ function AudioCapture() {
               recordingState.isRecording || recordingState.isTranscribing
             }
           />
-          System Audio (Experimental)
+          System Audio + Microphone (for calls)
         </label>
         <label>
           <input
@@ -275,7 +314,7 @@ function AudioCapture() {
               recordingState.isRecording || recordingState.isTranscribing
             }
           />
-          Microphone
+          Microphone Only
         </label>
       </div>
 
