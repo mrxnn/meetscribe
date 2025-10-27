@@ -20,7 +20,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "whisper-node": "^1.1.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",
