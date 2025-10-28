@@ -267,12 +267,12 @@ function AudioCapture() {
       console.log("Audio saved to:", filePath);
 
       // Show success message with file path
+      const fileName = filePath.split(/[\\/]/).pop() || "unknown";
       setTranscript(
-        `✅ Recording saved successfully!\n\nFile location: ${filePath}\n\nFile size: ${(
-          audioBlob.size / 1024
-        ).toFixed(
-          2
-        )} KB\n\n[Transcription temporarily disabled - focusing on recording first]`
+        `✅ Recording saved successfully!\n\n` +
+          `📁 Location: recordings/${fileName}\n\n` +
+          `📊 Size: ${(audioBlob.size / 1024).toFixed(2)} KB\n\n` +
+          `💡 Tip: Check your project's "recordings" folder to access the file.`
       );
 
       // TODO: Add transcription back later
@@ -304,7 +304,7 @@ function AudioCapture() {
         <p>
           <strong>System Audio Mode:</strong> Captures both system audio AND
           your microphone (perfect for MS Teams calls!). Recordings are saved to
-          your temp folder. Check console (F12) for file paths.
+          the <code>recordings</code> folder in your project directory.
         </p>
       </div>
 

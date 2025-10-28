@@ -272,9 +272,20 @@ import path from "path";
 
 ipcMain.handle("save-audio-file", async (_event, audioBuffer: ArrayBuffer) => {
   try {
-    const tempDir = os.tmpdir();
+    // Create recordings directory in project root
+    const recordingsDir = path.join(process.env.APP_ROOT || "", "recordings");
+
+    // Create the directory if it doesn't exist
+    if (!fs.existsSync(recordingsDir)) {
+      fs.mkdirSync(recordingsDir, { recursive: true });
+    }
+
     const timestamp = Date.now();
-    const filePath = path.join(tempDir, `audio-recording-${timestamp}.webm`);
+    const date = new Date(timestamp);
+    const dateStr = date.toISOString().slice(0, 10); // YYYY-MM-DD
+    const timeStr = date.toTimeString().slice(0, 8).replace(/:/g, "-"); // HH-MM-SS
+    const fileName = `recording_${dateStr}_${timeStr}.webm`;
+    const filePath = path.join(recordingsDir, fileName);
 
     const buffer = Buffer.from(audioBuffer);
     fs.writeFileSync(filePath, buffer);
