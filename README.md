@@ -83,7 +83,7 @@ export default {
 ## 🔧 Additional features
 
 1. electron-updater 👉 [see docs](src/components/update/README.md)
-1. System Audio Capture & Transcription 👉 [see docs](AUDIO_CAPTURE_GUIDE.md)
+1. System Audio Capture (System + Microphone Mix) 👉 [see docs](SYSTEM_AUDIO_CAPTURE_GUIDE.md)
 1. playwright
 
 ## ❔ FAQ
