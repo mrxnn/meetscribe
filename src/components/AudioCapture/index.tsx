@@ -311,6 +311,8 @@ function AudioCapture() {
     try {
       setRecordingState((prev) => ({ ...prev, isTranscribing: true }));
       setError(""); // Clear any previous errors
+      setTranscript(""); // Clear previous transcript
+      setProgress(null); // Clear previous progress
 
       // Combine all audio chunks
       const audioBlob = new Blob(audioChunksRef.current, {
@@ -332,18 +334,16 @@ function AudioCapture() {
       const filePath = await window.audioCapture.saveAudioFile(wavBuffer);
       console.log("Audio saved to:", filePath);
 
-      // Show success message with file path
-      const fileName = filePath.split(/[\\/]/).pop() || "unknown";
-      setTranscript(
-        `✅ Recording saved successfully!\n\n` +
-          `📁 Location: recordings/${fileName}\n\n` +
-          `📊 Size: ${(wavBuffer.byteLength / 1024).toFixed(2)} KB\n\n` +
-          `🎵 Format: WAV (16-bit PCM)\n\n` +
-          `💡 Tip: Check your project's "recordings" folder to access the file.`
-      );
+      // Transcribe the audio
+      console.log("Starting transcription...");
+      const result = await window.audioCapture.transcribeAudio(filePath);
 
-      // TODO: Add transcription back later
-      // const result = await window.audioCapture.transcribeAudio(filePath);
+      if (result.error) {
+        setError(result.error);
+        setTranscript(`❌ Transcription failed: ${result.error}`);
+      } else {
+        setTranscript(result.text);
+      }
 
       setRecordingState((prev) => ({ ...prev, isTranscribing: false }));
     } catch (err) {
@@ -433,7 +433,10 @@ function AudioCapture() {
       {recordingState.isTranscribing && (
         <div className="transcribing-status">
           <div className="spinner"></div>
-          <p>Converting to WAV and saving...</p>
+          <p>{progress?.message || "Processing and transcribing audio..."}</p>
+          {progress?.status && (
+            <p className="progress-status">Status: {progress.status}</p>
+          )}
         </div>
       )}
 
@@ -445,7 +448,7 @@ function AudioCapture() {
 
       {transcript && (
         <div className="transcript-container">
-          <h3>Transcript:</h3>
+          <h3>📝 Transcript:</h3>
           <div className="transcript-text">{transcript}</div>
         </div>
       )}

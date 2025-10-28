@@ -16,6 +16,7 @@ release
 
 # Audio recordings
 recordings
+resources
 
 # Editor directories and files
 .vscode/.debug.env

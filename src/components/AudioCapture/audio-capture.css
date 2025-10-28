@@ -165,6 +165,12 @@
   font-weight: 600;
 }
 
+.progress-status {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-top: 0.25rem !important;
+}
+
 .spinner {
   width: 40px;
   height: 40px;

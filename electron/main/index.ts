@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
+import { spawn } from "node:child_process";
 import { update } from "./update";
 
 const require = createRequire(import.meta.url);
@@ -211,29 +212,114 @@ ipcMain.handle("save-audio-file", async (_event, audioBuffer: ArrayBuffer) => {
 
 ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
   try {
-    // Import whisper-node dynamically
-    const whisper = require("whisper-node").whisper;
+    // Path to the faster-whisper-xxl executable
+    const whisperExePath = path.join(
+      process.env.APP_ROOT || "",
+      "resources",
+      "Faster-Whisper-XXL",
+      "faster-whisper-xxl.exe"
+    );
 
-    // Send progress update
+    // Check if the executable exists
+    if (!fs.existsSync(whisperExePath)) {
+      throw new Error(
+        `Faster-Whisper-XXL executable not found at: ${whisperExePath}\n` +
+          "Please extract Faster-Whisper-XXL to the resources/Faster-Whisper-XXL folder."
+      );
+    }
+
+    // Send initial progress update
     event.sender.send("transcription-progress", {
       status: "downloading",
-      message: "Downloading Whisper model (first time only)...",
+      message: "Initializing Whisper model (first time will download model)...",
     });
 
-    // Initialize whisper with options
-    const transcript = await whisper(filePath, {
-      modelName: "base.en", // Use base.en model for English
-      whisperOptions: {
-        outputInText: true,
-        outputInVtt: false,
-        outputInSrt: false,
-        outputInCsv: false,
-        translateToEnglish: false,
-        wordTimestamps: false,
-        timestamps_length: 20,
-        splitOnWord: true,
-      },
+    // Prepare Whisper command
+    // Options: --language English, --model base (small, fast model)
+    const args = [
+      filePath,
+      "--language",
+      "English",
+      "--model",
+      "base",
+      "--output_format",
+      "txt",
+      "--output_dir",
+      path.dirname(filePath),
+    ];
+
+    console.log("Running Faster-Whisper-XXL:", whisperExePath);
+    console.log("Arguments:", args.join(" "));
+
+    // Spawn the Faster-Whisper process
+    const whisperProcess = spawn(whisperExePath, args, {
+      cwd: path.dirname(whisperExePath), // Run from the executable's directory
     });
+
+    let outputText = "";
+    let errorText = "";
+
+    // Capture stdout
+    whisperProcess.stdout.on("data", (data: Buffer) => {
+      const output = data.toString();
+      console.log("Whisper output:", output);
+
+      // Send progress updates if they contain progress info
+      if (output.includes("%") || output.includes("Processing")) {
+        event.sender.send("transcription-progress", {
+          status: "transcribing",
+          message: output.trim(),
+        });
+      }
+
+      outputText += output;
+    });
+
+    // Capture stderr (Whisper often outputs progress here)
+    whisperProcess.stderr.on("data", (data: Buffer) => {
+      const error = data.toString();
+      console.log("Whisper stderr:", error);
+
+      // Send progress updates (don't treat all stderr as errors)
+      event.sender.send("transcription-progress", {
+        status: "transcribing",
+        message: error.trim(),
+      });
+
+      errorText += error;
+    });
+
+    // Wait for the process to complete
+    const exitCode = await new Promise<number>((resolve) => {
+      whisperProcess.on("close", (code) => {
+        resolve(code || 0);
+      });
+    });
+
+    if (exitCode !== 0) {
+      throw new Error(
+        `Whisper process exited with code ${exitCode}\n${errorText}`
+      );
+    }
+
+    // Read the generated transcript file
+    const baseName = path.basename(filePath, path.extname(filePath));
+    const transcriptPath = path.join(path.dirname(filePath), `${baseName}.txt`);
+
+    let transcriptText = "";
+    if (fs.existsSync(transcriptPath)) {
+      transcriptText = fs.readFileSync(transcriptPath, "utf-8");
+
+      // Clean up the transcript file
+      try {
+        fs.unlinkSync(transcriptPath);
+      } catch (cleanupError) {
+        console.error("Error cleaning up transcript file:", cleanupError);
+      }
+    } else {
+      // Fallback to stdout if no file was created
+      transcriptText = outputText;
+    }
 
     // Send completion progress
     event.sender.send("transcription-progress", {
@@ -249,7 +335,7 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
     }
 
     return {
-      text: Array.isArray(transcript) ? transcript.join(" ") : transcript,
+      text: transcriptText.trim(),
     };
   } catch (error) {
     console.error("Error transcribing audio:", error);
