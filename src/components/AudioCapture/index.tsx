@@ -242,6 +242,71 @@ function AudioCapture() {
     }
   };
 
+  const convertToWav = async (audioBlob: Blob): Promise<ArrayBuffer> => {
+    // Decode the audio blob
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const audioContext = new AudioContext();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+    // Get audio data
+    const numberOfChannels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const length = audioBuffer.length * numberOfChannels * 2;
+
+    // Create WAV file buffer
+    const wavBuffer = new ArrayBuffer(44 + length);
+    const view = new DataView(wavBuffer);
+
+    // Write WAV header
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + length, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true); // PCM format
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, numberOfChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+    view.setUint16(32, numberOfChannels * 2, true);
+    view.setUint16(34, 16, true); // 16-bit
+    writeString(36, "data");
+    view.setUint32(40, length, true);
+
+    // Write audio data
+    const offset = 44;
+    const channels = [];
+    for (let i = 0; i < numberOfChannels; i++) {
+      channels.push(audioBuffer.getChannelData(i));
+    }
+
+    let index = 0;
+    for (let i = 0; i < audioBuffer.length; i++) {
+      for (let channel = 0; channel < numberOfChannels; channel++) {
+        const sample = Math.max(-1, Math.min(1, channels[channel][i]));
+        view.setInt16(
+          offset + index,
+          sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+          true
+        );
+        index += 2;
+      }
+    }
+
+    await audioContext.close();
+    console.log("✅ Converted to WAV format");
+    console.log("Sample rate:", sampleRate, "Hz");
+    console.log("Channels:", numberOfChannels);
+    console.log("WAV size:", wavBuffer.byteLength, "bytes");
+
+    return wavBuffer;
+  };
+
   const processRecording = async () => {
     try {
       setRecordingState((prev) => ({ ...prev, isTranscribing: true }));
@@ -258,12 +323,13 @@ function AudioCapture() {
         throw new Error("No audio data recorded. Please try again.");
       }
 
-      // Convert to array buffer
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      console.log("Array buffer size:", arrayBuffer.byteLength, "bytes");
+      console.log("Converting WebM to WAV...");
+
+      // Convert WebM to WAV
+      const wavBuffer = await convertToWav(audioBlob);
 
       // Save audio file
-      const filePath = await window.audioCapture.saveAudioFile(arrayBuffer);
+      const filePath = await window.audioCapture.saveAudioFile(wavBuffer);
       console.log("Audio saved to:", filePath);
 
       // Show success message with file path
@@ -271,7 +337,8 @@ function AudioCapture() {
       setTranscript(
         `✅ Recording saved successfully!\n\n` +
           `📁 Location: recordings/${fileName}\n\n` +
-          `📊 Size: ${(audioBlob.size / 1024).toFixed(2)} KB\n\n` +
+          `📊 Size: ${(wavBuffer.byteLength / 1024).toFixed(2)} KB\n\n` +
+          `🎵 Format: WAV (16-bit PCM)\n\n` +
           `💡 Tip: Check your project's "recordings" folder to access the file.`
       );
 
@@ -366,7 +433,7 @@ function AudioCapture() {
       {recordingState.isTranscribing && (
         <div className="transcribing-status">
           <div className="spinner"></div>
-          <p>Saving recording...</p>
+          <p>Converting to WAV and saving...</p>
         </div>
       )}
 

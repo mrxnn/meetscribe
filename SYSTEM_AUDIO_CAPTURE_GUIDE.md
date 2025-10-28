@@ -236,6 +236,66 @@ const stopRecording = () => {
 ## Step 4: Process & Save Recording
 
 ```typescript
+const convertToWav = async (audioBlob: Blob): Promise<ArrayBuffer> => {
+  // Decode the audio blob
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const audioContext = new AudioContext();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+  // Get audio data
+  const numberOfChannels = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+  const length = audioBuffer.length * numberOfChannels * 2;
+
+  // Create WAV file buffer
+  const wavBuffer = new ArrayBuffer(44 + length);
+  const view = new DataView(wavBuffer);
+
+  // Write WAV header
+  const writeString = (offset: number, string: string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + length, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numberOfChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+  view.setUint16(32, numberOfChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, "data");
+  view.setUint32(40, length, true);
+
+  // Write audio data
+  const offset = 44;
+  const channels = [];
+  for (let i = 0; i < numberOfChannels; i++) {
+    channels.push(audioBuffer.getChannelData(i));
+  }
+
+  let index = 0;
+  for (let i = 0; i < audioBuffer.length; i++) {
+    for (let channel = 0; channel < numberOfChannels; channel++) {
+      const sample = Math.max(-1, Math.min(1, channels[channel][i]));
+      view.setInt16(
+        offset + index,
+        sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+        true
+      );
+      index += 2;
+    }
+  }
+
+  await audioContext.close();
+  return wavBuffer;
+};
+
 const processRecording = async () => {
   try {
     // Combine all recorded chunks
@@ -245,11 +305,11 @@ const processRecording = async () => {
 
     console.log("Audio blob size:", audioBlob.size, "bytes");
 
-    // Convert to ArrayBuffer for saving
-    const arrayBuffer = await audioBlob.arrayBuffer();
+    // Convert WebM to WAV
+    const wavBuffer = await convertToWav(audioBlob);
 
     // Save to file (via IPC if using Electron)
-    const filePath = await saveAudioFile(arrayBuffer);
+    const filePath = await saveAudioFile(wavBuffer);
 
     console.log("✅ Recording saved:", filePath);
 
@@ -284,7 +344,7 @@ ipcMain.handle("save-audio-file", async (_event, audioBuffer: ArrayBuffer) => {
     const date = new Date(timestamp);
     const dateStr = date.toISOString().slice(0, 10); // YYYY-MM-DD
     const timeStr = date.toTimeString().slice(0, 8).replace(/:/g, "-"); // HH-MM-SS
-    const fileName = `recording_${dateStr}_${timeStr}.webm`;
+    const fileName = `recording_${dateStr}_${timeStr}.wav`;
     const filePath = path.join(recordingsDir, fileName);
 
     const buffer = Buffer.from(audioBuffer);
@@ -475,17 +535,24 @@ Microphone Stream  → createMediaStreamSource() → GainNode (2.0x)
                                                       ↓
                                                 MediaRecorder
                                                       ↓
-                                               WebM Audio File
+                                               WebM Recording
+                                                      ↓
+                                            decodeAudioData()
+                                                      ↓
+                                         WAV Conversion (16-bit PCM)
+                                                      ↓
+                                               WAV Audio File
 ```
 
 ### Important Notes
 
 1. **Permissions**: User must grant both screen capture and microphone permissions
 2. **Source Selection**: User will see a system dialog to select which window/screen to capture
-3. **Audio Format**: Output is WebM format (widely supported)
+3. **Audio Format**: Output is WAV format (16-bit PCM, uncompressed, universally compatible)
 4. **Volume Control**: Microphone is boosted to 2x volume to balance with system audio. Adjust `micGain.gain.value` if needed (1.0 = normal, 2.0 = 2x louder)
-5. **Cleanup**: Always close AudioContext and stop tracks when done
-6. **MS Teams**: Select the Teams window when the source picker appears
+5. **Conversion**: WebM recording is converted to WAV in the browser using Web Audio API before saving
+6. **Cleanup**: Always close AudioContext and stop tracks when done
+7. **MS Teams**: Select the Teams window when the source picker appears
 
 ---
 
@@ -527,6 +594,11 @@ This implementation works in:
 - ✅ Electron (all versions with desktopCapturer)
 - ✅ Chrome/Chromium with screen capture API
 - ❌ Not supported in standard browsers for system audio (security restriction)
+
+### Audio Format Compatibility
+
+- **WAV (16-bit PCM)**: Universal compatibility - works with all media players, editing software, and transcription services
+- **Conversion**: Done client-side using Web Audio API - no external dependencies required
 
 ---
 

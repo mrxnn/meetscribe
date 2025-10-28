@@ -177,7 +177,7 @@ ipcMain.handle("save-audio-file", async (_event, audioBuffer: ArrayBuffer) => {
     const date = new Date(timestamp);
     const dateStr = date.toISOString().slice(0, 10); // YYYY-MM-DD
     const timeStr = date.toTimeString().slice(0, 8).replace(/:/g, "-"); // HH-MM-SS
-    const fileName = `recording_${dateStr}_${timeStr}.webm`;
+    const fileName = `recording_${dateStr}_${timeStr}.wav`;
     const filePath = path.join(recordingsDir, fileName);
 
     console.log("Attempting to save audio file...");
