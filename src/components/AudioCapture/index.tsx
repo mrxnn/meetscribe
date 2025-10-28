@@ -100,17 +100,36 @@ function AudioCapture() {
     const systemSource = audioContext.createMediaStreamSource(systemStream);
     const micSource = audioContext.createMediaStreamSource(micStream);
 
+    // Create gain nodes for volume control
+    const systemGain = audioContext.createGain();
+    const micGain = audioContext.createGain();
+
+    // Adjust volumes (keep system audio at 100%, boost microphone to 200%)
+    systemGain.gain.value = 1.0; // System audio at original volume
+    micGain.gain.value = 6.0; // Boost microphone to 2x volume
+
     // Create a destination to mix both
     const destination = audioContext.createMediaStreamDestination();
 
-    // Connect both sources to the destination
-    systemSource.connect(destination);
-    micSource.connect(destination);
+    // Connect: source → gain → destination
+    systemSource.connect(systemGain);
+    systemGain.connect(destination);
 
-    console.log("✅ Mixed stream created: System Audio + Microphone");
+    micSource.connect(micGain);
+    micGain.connect(destination);
+
+    console.log(
+      "✅ Mixed stream created: System Audio + Microphone (Mic boosted 2x)"
+    );
     console.log("System audio tracks:", systemStream.getAudioTracks().length);
     console.log("Microphone tracks:", micStream.getAudioTracks().length);
     console.log("Mixed tracks:", destination.stream.getAudioTracks().length);
+    console.log(
+      "Volume levels - System:",
+      systemGain.gain.value,
+      "Mic:",
+      micGain.gain.value
+    );
 
     // Return the mixed stream
     return destination.stream;

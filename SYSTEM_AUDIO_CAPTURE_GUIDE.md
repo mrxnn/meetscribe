@@ -143,18 +143,33 @@ const startRecording = async () => {
       },
     });
 
-    // 6. Mix both streams using Web Audio API
+    // 6. Mix both streams using Web Audio API with volume control
     const audioContext = new AudioContext();
     audioContextRef.current = audioContext;
 
     const systemSource = audioContext.createMediaStreamSource(systemStream);
     const micSource = audioContext.createMediaStreamSource(micStream);
+
+    // Create gain nodes for volume control
+    const systemGain = audioContext.createGain();
+    const micGain = audioContext.createGain();
+
+    // Adjust volumes (keep system audio at 100%, boost microphone to 200%)
+    systemGain.gain.value = 1.0; // System audio at original volume
+    micGain.gain.value = 2.0; // Boost microphone to 2x volume
+
     const destination = audioContext.createMediaStreamDestination();
 
-    systemSource.connect(destination);
-    micSource.connect(destination);
+    // Connect: source → gain → destination
+    systemSource.connect(systemGain);
+    systemGain.connect(destination);
 
-    console.log("✅ Mixed stream created: System Audio + Microphone");
+    micSource.connect(micGain);
+    micGain.connect(destination);
+
+    console.log(
+      "✅ Mixed stream created: System Audio + Microphone (Mic boosted 2x)"
+    );
 
     // 7. Store the mixed stream
     streamRef.current = destination.stream;
@@ -366,10 +381,19 @@ function AudioRecorder() {
 
     const systemSource = audioContext.createMediaStreamSource(systemStream);
     const micSource = audioContext.createMediaStreamSource(micStream);
+
+    // Create gain nodes for volume control
+    const systemGain = audioContext.createGain();
+    const micGain = audioContext.createGain();
+    systemGain.gain.value = 1.0; // System audio at original volume
+    micGain.gain.value = 2.0; // Boost microphone to 2x volume
+
     const destination = audioContext.createMediaStreamDestination();
 
-    systemSource.connect(destination);
-    micSource.connect(destination);
+    systemSource.connect(systemGain);
+    systemGain.connect(destination);
+    micSource.connect(micGain);
+    micGain.connect(destination);
 
     streamRef.current = destination.stream;
     audioChunksRef.current = [];
@@ -430,17 +454,17 @@ The Web Audio API's `AudioContext` allows us to mix multiple audio sources into 
 ### Audio Flow Diagram
 
 ```
-System Audio Stream → AudioContext → createMediaStreamSource()
-                              ↓
-Microphone Stream  → AudioContext → createMediaStreamSource()
-                              ↓
-                    createMediaStreamDestination()
-                              ↓
-                        Mixed Stream
-                              ↓
-                        MediaRecorder
-                              ↓
-                       WebM Audio File
+System Audio Stream → createMediaStreamSource() → GainNode (1.0x)
+                                                      ↓
+Microphone Stream  → createMediaStreamSource() → GainNode (2.0x)
+                                                      ↓
+                                        createMediaStreamDestination()
+                                                      ↓
+                                                Mixed Stream
+                                                      ↓
+                                                MediaRecorder
+                                                      ↓
+                                               WebM Audio File
 ```
 
 ### Important Notes
@@ -448,8 +472,9 @@ Microphone Stream  → AudioContext → createMediaStreamSource()
 1. **Permissions**: User must grant both screen capture and microphone permissions
 2. **Source Selection**: User will see a system dialog to select which window/screen to capture
 3. **Audio Format**: Output is WebM format (widely supported)
-4. **Cleanup**: Always close AudioContext and stop tracks when done
-5. **MS Teams**: Select the Teams window when the source picker appears
+4. **Volume Control**: Microphone is boosted to 2x volume to balance with system audio. Adjust `micGain.gain.value` if needed (1.0 = normal, 2.0 = 2x louder)
+5. **Cleanup**: Always close AudioContext and stop tracks when done
+6. **MS Teams**: Select the Teams window when the source picker appears
 
 ---
 
