@@ -4,7 +4,11 @@ import type { RecordingState, TranscriptionProgress } from "@/type/audio";
 
 type RecordingMode = "system" | "microphone";
 
-function AudioCapture() {
+interface AudioCaptureProps {
+  onTranscriptUpdate?: (transcript: string) => void;
+}
+
+function AudioCapture({ onTranscriptUpdate }: AudioCaptureProps) {
   const [recordingState, setRecordingState] = useState<RecordingState>({
     isRecording: false,
     isTranscribing: false,
@@ -344,6 +348,10 @@ function AudioCapture() {
       } else {
         // Display just the cleaned transcript content
         setTranscript(result.text);
+        // Pass transcript to parent component
+        if (onTranscriptUpdate) {
+          onTranscriptUpdate(result.text);
+        }
       }
 
       setRecordingState((prev) => ({ ...prev, isTranscribing: false }));
@@ -366,14 +374,12 @@ function AudioCapture() {
 
   return (
     <div className="audio-capture">
-      <h2>Audio Capture & Transcription</h2>
+      <h2>Meeting Assistant</h2>
 
       <div className="info-banner">
         <p>
-          <strong>System Audio Mode:</strong> Captures both system audio AND
-          your microphone (perfect for MS Teams calls!). Each recording creates
-          a <code>.wav</code> audio file and a <code>.txt</code> transcript in
-          the <code>recordings</code> folder.
+          Record your meetings from Teams, Zoom, or Google Meet. Capture both
+          system audio and your microphone, then get an AI-powered transcript.
         </p>
       </div>
 

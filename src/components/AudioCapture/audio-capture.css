@@ -1,24 +1,22 @@
 .audio-capture {
   width: 100%;
-  max-width: 800px;
-  margin: 2rem auto;
-  padding: 2rem;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 1.5rem;
+  background: #ffffff;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .audio-capture h2 {
   margin-top: 0;
   margin-bottom: 1rem;
   text-align: center;
-  color: #fff;
+  color: #2c3e50;
   font-size: 1.5rem;
 }
 
 .info-banner {
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.3);
+  background: #e8f4f8;
+  border: 1px solid #b3d9e6;
   border-radius: 8px;
   padding: 0.75rem 1rem;
   margin-bottom: 1.5rem;
@@ -26,13 +24,13 @@
 
 .info-banner p {
   margin: 0;
-  color: #ffc107;
+  color: #2c3e50;
   font-size: 0.9rem;
   line-height: 1.4;
 }
 
 .info-banner strong {
-  color: #ffca28;
+  color: #1976d2;
 }
 
 .mode-selector {
@@ -41,7 +39,7 @@
   justify-content: center;
   margin-bottom: 1.5rem;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: #f8f9fa;
   border-radius: 8px;
 }
 
@@ -49,7 +47,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #fff;
+  color: #2c3e50;
   cursor: pointer;
   font-size: 0.95rem;
 }
@@ -208,16 +206,16 @@
 .transcript-container h3 {
   margin-top: 0;
   margin-bottom: 1rem;
-  color: #667eea;
+  color: #2c3e50;
   font-size: 1.25rem;
 }
 
 .transcript-text {
   padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #f8f9fa;
+  border: 1px solid #e1e8ed;
   border-radius: 8px;
-  color: #fff;
+  color: #2c3e50;
   line-height: 1.6;
   min-height: 100px;
   max-height: 400px;
@@ -231,15 +229,15 @@
 }
 
 .transcript-text::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: #f1f1f1;
   border-radius: 4px;
 }
 
 .transcript-text::-webkit-scrollbar-thumb {
-  background: rgba(102, 126, 234, 0.5);
+  background: #bdc3c7;
   border-radius: 4px;
 }
 
 .transcript-text::-webkit-scrollbar-thumb:hover {
-  background: rgba(102, 126, 234, 0.7);
+  background: #95a5a6;
 }
