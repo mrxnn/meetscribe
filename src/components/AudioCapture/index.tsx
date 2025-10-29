@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import "./audio-capture.css";
 import type { RecordingState, TranscriptionProgress } from "@/type/audio";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 type RecordingMode = "system" | "microphone";
 
@@ -373,94 +381,120 @@ function AudioCapture({ onTranscriptUpdate }: AudioCaptureProps) {
   };
 
   return (
-    <div className="audio-capture">
-      <h2>Meeting Assistant</h2>
-
-      <div className="info-banner">
-        <p>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Meeting Assistant</CardTitle>
+        <CardDescription>
           Record your meetings from Teams, Zoom, or Google Meet. Capture both
           system audio and your microphone, then get an AI-powered transcript.
-        </p>
-      </div>
-
-      <div className="mode-selector">
-        <label>
-          <input
-            type="radio"
-            name="recordingMode"
-            value="system"
-            checked={recordingMode === "system"}
-            onChange={(e) => setRecordingMode(e.target.value as RecordingMode)}
-            disabled={
-              recordingState.isRecording || recordingState.isTranscribing
-            }
-          />
-          System Audio + Microphone (for calls)
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="recordingMode"
-            value="microphone"
-            checked={recordingMode === "microphone"}
-            onChange={(e) => setRecordingMode(e.target.value as RecordingMode)}
-            disabled={
-              recordingState.isRecording || recordingState.isTranscribing
-            }
-          />
-          Microphone Only
-        </label>
-      </div>
-
-      <div className="controls">
-        {!recordingState.isRecording ? (
-          <button
-            className="btn btn-start"
-            onClick={startRecording}
-            disabled={recordingState.isTranscribing}
-          >
-            🎤 Start Recording (
-            {recordingMode === "system" ? "System Audio" : "Microphone"})
-          </button>
-        ) : (
-          <button className="btn btn-stop" onClick={stopRecording}>
-            ⏹️ Stop Recording
-          </button>
-        )}
-      </div>
-
-      {recordingState.isRecording && (
-        <div className="recording-status">
-          <div className="recording-indicator">
-            <span className="recording-dot"></span>
-            Recording: {formatDuration(recordingState.recordingDuration)}
-          </div>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Mode Selector */}
+        <div className="flex gap-6 justify-center p-4 bg-muted rounded-lg">
+          <Label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="recordingMode"
+              value="system"
+              checked={recordingMode === "system"}
+              onChange={(e) =>
+                setRecordingMode(e.target.value as RecordingMode)
+              }
+              disabled={
+                recordingState.isRecording || recordingState.isTranscribing
+              }
+              className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
+            />
+            <span>System Audio + Microphone (for calls)</span>
+          </Label>
+          <Label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="recordingMode"
+              value="microphone"
+              checked={recordingMode === "microphone"}
+              onChange={(e) =>
+                setRecordingMode(e.target.value as RecordingMode)
+              }
+              disabled={
+                recordingState.isRecording || recordingState.isTranscribing
+              }
+              className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
+            />
+            <span>Microphone Only</span>
+          </Label>
         </div>
-      )}
 
-      {recordingState.isTranscribing && (
-        <div className="transcribing-status">
-          <div className="spinner"></div>
-          <p>{progress?.message || "Processing and transcribing audio..."}</p>
-          {progress?.status && (
-            <p className="progress-status">Status: {progress.status}</p>
+        {/* Controls */}
+        <div className="flex justify-center">
+          {!recordingState.isRecording ? (
+            <Button
+              onClick={startRecording}
+              disabled={recordingState.isTranscribing}
+              size="lg"
+              className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800"
+            >
+              🎤 Start Recording (
+              {recordingMode === "system" ? "System Audio" : "Microphone"})
+            </Button>
+          ) : (
+            <Button
+              onClick={stopRecording}
+              size="lg"
+              variant="destructive"
+              className="bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600"
+            >
+              ⏹️ Stop Recording
+            </Button>
           )}
         </div>
-      )}
 
-      {error && (
-        <div className="error-message">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+        {/* Recording Status */}
+        {recordingState.isRecording && (
+          <div className="flex justify-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 font-semibold">
+              <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+              Recording: {formatDuration(recordingState.recordingDuration)}
+            </div>
+          </div>
+        )}
 
-      {transcript && (
-        <div className="transcript-container">
-          <h3>📝 Transcript:</h3>
-          <div className="transcript-text">{transcript}</div>
-        </div>
-      )}
-    </div>
+        {/* Transcribing Status */}
+        {recordingState.isTranscribing && (
+          <div className="text-center p-6 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="w-10 h-10 mx-auto mb-4 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+            <p className="text-purple-700 font-semibold">
+              {progress?.message || "Processing and transcribing audio..."}
+            </p>
+            {progress?.status && (
+              <p className="text-sm text-purple-600 mt-2 opacity-80">
+                Status: {progress.status}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <strong className="block mb-2">Error:</strong> {error}
+          </div>
+        )}
+
+        {/* Transcript */}
+        {transcript && (
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-foreground">
+              📝 Transcript:
+            </h3>
+            <div className="p-6 bg-muted border border-border rounded-lg min-h-[100px] max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+              {transcript}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

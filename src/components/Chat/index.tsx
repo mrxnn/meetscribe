@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import "./chat.css";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ChatProps {
   transcript: string;
@@ -127,82 +129,111 @@ function Chat({ transcript, disabled = false }: ChatProps) {
   };
 
   return (
-    <div className="chat-container">
-      <h3>💬 Chat About This Meeting</h3>
+    <Card className="w-full mt-6">
+      <CardHeader>
+        <CardTitle>💬 Chat About This Meeting</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {disabled && (
+          <div className="p-8 text-center text-muted-foreground bg-muted rounded-lg">
+            Record and transcribe audio to start chatting about the meeting.
+          </div>
+        )}
 
-      {disabled && (
-        <div className="chat-disabled-message">
-          Record and transcribe audio to start chatting about the meeting.
-        </div>
-      )}
-
-      {!disabled && (
-        <>
-          <div className="chat-messages">
-            {messages.length === 0 && (
-              <div className="chat-empty-state">
-                <p>Ask me anything about the meeting! For example:</p>
-                <ul>
-                  <li>"What were the main action items?"</li>
-                  <li>"Summarize the key decisions made"</li>
-                  <li>"Who participated in this meeting?"</li>
-                  <li>"What topics were discussed?"</li>
-                </ul>
-              </div>
-            )}
-
-            {messages.map((message, index) => (
-              <div key={index} className={`message message-${message.role}`}>
-                <div className="message-role">
-                  {message.role === "user" ? "You" : "AI Assistant"}
+        {!disabled && (
+          <div className="space-y-4">
+            {/* Messages Container */}
+            <div className="flex-1 overflow-y-auto p-4 bg-muted rounded-lg flex flex-col gap-4">
+              {messages.length === 0 && (
+                <div className="text-muted-foreground text-center py-8 px-4">
+                  <p className="mb-4 text-base text-foreground">
+                    Ask me anything about the meeting! For example:
+                  </p>
+                  <ul className="list-none p-0 text-left max-w-lg mx-auto space-y-2">
+                    <li className="p-2 bg-background rounded border-l-4 border-blue-500 italic">
+                      "What were the main action items?"
+                    </li>
+                    <li className="p-2 bg-background rounded border-l-4 border-blue-500 italic">
+                      "Summarize the key decisions made"
+                    </li>
+                    <li className="p-2 bg-background rounded border-l-4 border-blue-500 italic">
+                      "Who participated in this meeting?"
+                    </li>
+                    <li className="p-2 bg-background rounded border-l-4 border-blue-500 italic">
+                      "What topics were discussed?"
+                    </li>
+                  </ul>
                 </div>
-                <div className="message-content">{message.content}</div>
-              </div>
-            ))}
+              )}
 
-            {isLoading && (
-              <div className="message message-assistant">
-                <div className="message-role">AI Assistant</div>
-                <div className="message-content">
-                  <div className="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex flex-col p-4 rounded-lg max-w-[85%] animate-in slide-in-from-bottom-2 ${
+                    message.role === "user"
+                      ? "self-end bg-blue-500 text-white"
+                      : "self-start bg-background border border-border"
+                  }`}
+                >
+                  <div
+                    className={`text-xs font-semibold mb-2 uppercase tracking-wide opacity-80 ${
+                      message.role === "user"
+                        ? "text-white/90"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {message.role === "user" ? "You" : "AI Assistant"}
+                  </div>
+                  <div className="whitespace-pre-wrap break-words leading-relaxed">
+                    {message.content}
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
 
-            {error && (
-              <div className="chat-error">
-                <strong>Error:</strong> {error}
-              </div>
-            )}
+              {isLoading && (
+                <div className="flex flex-col self-start p-4 rounded-lg max-w-[85%] bg-background border border-border">
+                  <div className="text-xs font-semibold mb-2 uppercase tracking-wide opacity-80 text-muted-foreground">
+                    AI Assistant
+                  </div>
+                  <div className="flex gap-1 items-center py-2">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0ms]"></span>
+                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:150ms]"></span>
+                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:300ms]"></span>
+                  </div>
+                </div>
+              )}
 
-            <div ref={messagesEndRef} />
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  <strong>Error:</strong> {error}
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Container */}
+            <div className="flex gap-3 items-center">
+              <Input
+                type="text"
+                placeholder="Ask a question about the meeting..."
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={!inputValue.trim() || isLoading}
+              >
+                Send
+              </Button>
+            </div>
           </div>
-
-          <div className="chat-input-container">
-            <input
-              type="text"
-              className="chat-input"
-              placeholder="Ask a question about the meeting..."
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={isLoading}
-            />
-            <button
-              className="chat-send-button"
-              onClick={sendMessage}
-              disabled={!inputValue.trim() || isLoading}
-            >
-              Send
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
