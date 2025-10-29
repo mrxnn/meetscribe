@@ -12,6 +12,7 @@ export interface RecordingState {
 
 export interface TranscriptionResult {
   text: string;
+  transcriptPath?: string;
   error?: string;
 }
 

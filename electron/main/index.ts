@@ -235,15 +235,15 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
     });
 
     // Prepare Whisper command
-    // Options: --language English, --model base (small, fast model)
+    // Options: --language English, --model distil-large-v3 (best accuracy, optimized for speed)
     const args = [
       filePath,
       "--language",
       "English",
       "--model",
-      "base",
+      "distil-large-v2",
       "--output_format",
-      "txt",
+      "srt",
       "--output_dir",
       path.dirname(filePath),
     ];
@@ -321,21 +321,31 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
       transcriptText = outputText;
     }
 
+    // Save transcript to file with same name as audio file
+    const transcriptSavePath = path.join(
+      path.dirname(filePath),
+      `${baseName}.txt`
+    );
+
+    try {
+      fs.writeFileSync(transcriptSavePath, transcriptText.trim(), "utf-8");
+      console.log("✅ Transcript saved to:", transcriptSavePath);
+    } catch (saveError) {
+      console.error("Error saving transcript file:", saveError);
+    }
+
     // Send completion progress
     event.sender.send("transcription-progress", {
       status: "complete",
       message: "Transcription complete!",
     });
 
-    // Clean up audio file
-    try {
-      fs.unlinkSync(filePath);
-    } catch (cleanupError) {
-      console.error("Error cleaning up audio file:", cleanupError);
-    }
+    // Keep the audio file - don't delete it
+    console.log("✅ Audio file preserved at:", filePath);
 
     return {
       text: transcriptText.trim(),
+      transcriptPath: transcriptSavePath,
     };
   } catch (error) {
     console.error("Error transcribing audio:", error);

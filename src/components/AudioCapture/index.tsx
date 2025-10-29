@@ -342,7 +342,18 @@ function AudioCapture() {
         setError(result.error);
         setTranscript(`❌ Transcription failed: ${result.error}`);
       } else {
-        setTranscript(result.text);
+        // Display transcript with file location info
+        const audioFileName = filePath.split(/[\\/]/).pop() || "unknown";
+        const transcriptFileName =
+          result.transcriptPath?.split(/[\\/]/).pop() || "unknown.srt";
+
+        setTranscript(
+          `📁 Files saved to recordings folder:\n` +
+            `🎵 Audio: ${audioFileName}\n` +
+            `📝 Transcript (with speakers): ${transcriptFileName}\n\n` +
+            `─────────────────────────────────\n\n` +
+            `${result.text}`
+        );
       }
 
       setRecordingState((prev) => ({ ...prev, isTranscribing: false }));

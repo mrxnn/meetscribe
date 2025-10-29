@@ -98,15 +98,16 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
     });
 
     // Prepare Whisper command
-    // Options: --language English, --model base (small, fast model)
+    // Options: --language English, --model distil-large-v3 (best accuracy, optimized for speed)
+    // With speaker diarization for identifying different speakers in meetings
     const args = [
       filePath,
       "--language",
       "English",
       "--model",
-      "base",
+      "distil-large-v3",
       "--output_format",
-      "txt",
+      "srt",
       "--output_dir",
       path.dirname(filePath),
     ];
@@ -184,21 +185,31 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
       transcriptText = outputText;
     }
 
+    // Save transcript to file with same name as audio file
+    const transcriptSavePath = path.join(
+      path.dirname(filePath),
+      `${baseName}.txt`
+    );
+
+    try {
+      fs.writeFileSync(transcriptSavePath, transcriptText.trim(), "utf-8");
+      console.log("✅ Transcript saved to:", transcriptSavePath);
+    } catch (saveError) {
+      console.error("Error saving transcript file:", saveError);
+    }
+
     // Send completion progress
     event.sender.send("transcription-progress", {
       status: "complete",
       message: "Transcription complete!",
     });
 
-    // Clean up audio file (optional)
-    try {
-      fs.unlinkSync(filePath);
-    } catch (cleanupError) {
-      console.error("Error cleaning up audio file:", cleanupError);
-    }
+    // Keep the audio file - don't delete it
+    console.log("✅ Audio file preserved at:", filePath);
 
     return {
       text: transcriptText.trim(),
+      transcriptPath: transcriptSavePath,
     };
   } catch (error) {
     console.error("Error transcribing audio:", error);
@@ -496,14 +507,28 @@ const processRecording = async () => {
 
 Faster-Whisper-XXL supports multiple model sizes. Choose based on your needs:
 
-| Model    | Size   | Speed     | Accuracy  | RAM Usage | Use Case                  |
-| -------- | ------ | --------- | --------- | --------- | ------------------------- |
-| `tiny`   | ~75MB  | Fastest   | Low       | ~1GB      | Quick drafts, testing     |
-| `base`   | ~150MB | Very Fast | Good      | ~1GB      | **Default, balanced**     |
-| `small`  | ~500MB | Fast      | Better    | ~2GB      | General purpose           |
-| `medium` | ~1.5GB | Moderate  | Great     | ~5GB      | High accuracy needed      |
-| `large`  | ~3GB   | Slow      | Best      | ~10GB     | Maximum accuracy          |
-| `turbo`  | ~800MB | Fast      | Excellent | ~6GB      | New distilled model, fast |
+### Standard Models
+
+| Model       | Size   | Speed     | Accuracy         | RAM Usage | Use Case              |
+| ----------- | ------ | --------- | ---------------- | --------- | --------------------- |
+| `tiny`      | ~75MB  | Fastest   | Low (10% WER)    | ~1GB      | Quick drafts, testing |
+| `tiny.en`   | ~75MB  | Fastest   | Low (9% WER)     | ~1GB      | English quick tests   |
+| `base`      | ~150MB | Very Fast | Good (7% WER)    | ~1-2GB    | Fast transcription    |
+| `base.en`   | ~150MB | Very Fast | Good (6% WER)    | ~1-2GB    | Fast English          |
+| `small`     | ~500MB | Fast      | Good (5% WER)    | ~2-3GB    | General purpose       |
+| `small.en`  | ~500MB | Fast      | Good (4.5% WER)  | ~2-3GB    | Good English          |
+| `medium`    | ~1.5GB | Moderate  | Great (4% WER)   | ~5-6GB    | High quality          |
+| `medium.en` | ~1.5GB | Moderate  | Great (3.5% WER) | ~5-6GB    | High quality English  |
+| `large-v3`  | ~3GB   | Slow      | Best (2.5% WER)  | ~10GB     | Maximum accuracy      |
+
+### Distilled Models (Optimized) ⭐ RECOMMENDED
+
+| Model              | Size   | Speed     | Accuracy           | RAM Usage | Use Case                  |
+| ------------------ | ------ | --------- | ------------------ | --------- | ------------------------- |
+| `distil-small.en`  | ~350MB | Very Fast | Good (4.8% WER)    | ~2GB      | Fast English              |
+| `distil-medium.en` | ~800MB | Fast      | Great (3.8% WER)   | ~4-5GB    | Balanced English          |
+| `distil-large-v2`  | ~1.5GB | Moderate  | Excellent (3% WER) | ~6-8GB    | High quality, faster      |
+| `distil-large-v3`  | ~1.5GB | Moderate  | Best (2.8% WER)    | ~6-8GB    | **Default, best overall** |
 
 ### Change Model in Code
 
@@ -515,7 +540,7 @@ const args = [
   "--language",
   "English",
   "--model",
-  "base", // ← Change this: tiny, base, small, medium, large, turbo
+  "distil-large-v3", // ← Change this: base.en, small.en, medium.en, distil-large-v3, etc.
   "--output_format",
   "txt",
   "--output_dir",
@@ -560,11 +585,11 @@ const args = [
   "--language",
   "English",
   "--model",
-  "base",
+  "distil-large-v3",
 
   // Output format
   "--output_format",
-  "txt", // Options: txt, srt, vtt, json
+  "srt", // Options: txt, srt, vtt, json
 
   // Output directory
   "--output_dir",
@@ -581,6 +606,14 @@ const args = [
   "true", // Use Voice Activity Detection
   "--word_timestamps",
   "true", // Include word-level timestamps
+
+  // Speaker diarization (identify different speakers)
+  "--diarize",
+  "true", // Enable speaker diarization
+  "--min_speakers",
+  "2", // Minimum number of speakers
+  "--max_speakers",
+  "6", // Maximum number of speakers
 ];
 ```
 
@@ -805,6 +838,57 @@ Including Faster-Whisper-XXL will increase your installer size:
 ---
 
 ## Advanced Features
+
+### Speaker Diarization
+
+Speaker diarization identifies different speakers in your audio and labels who said what. This is perfect for meeting recordings, interviews, and multi-person conversations.
+
+**How to enable:**
+
+```typescript
+const args = [
+  filePath,
+  "--language",
+  "English",
+  "--model",
+  "distil-large-v3",
+  "--diarize",
+  "true",
+  "--min_speakers",
+  "2", // Adjust based on your typical meetings
+  "--max_speakers",
+  "6",
+  "--output_format",
+  "srt", // Best format for speaker labels
+  "--output_dir",
+  path.dirname(filePath),
+];
+```
+
+**Example SRT output with speakers:**
+
+```
+1
+00:00:00,000 --> 00:00:05,000
+[SPEAKER_00]: Hello everyone, thanks for joining today's meeting.
+
+2
+00:00:05,500 --> 00:00:10,000
+[SPEAKER_01]: Hi! Great to be here. Let's discuss the project status.
+
+3
+00:00:10,500 --> 00:00:15,000
+[SPEAKER_00]: Sure, I'll start with the Q4 metrics.
+```
+
+**Important notes:**
+
+- ⚠️ First run downloads additional models (~300MB)
+- ⚠️ Adds 10-30% more processing time
+- ⚠️ Works best with 2-6 speakers
+- ⚠️ Speakers are labeled as SPEAKER_00, SPEAKER_01, etc. (not actual names)
+- ✅ SRT format is most readable for speaker-labeled transcripts
+- ✅ Works with all Whisper models
 
 ### Word-Level Timestamps
 
@@ -1071,12 +1155,21 @@ Whisper is licensed under MIT by OpenAI.
 
 ```bash
 # Basic transcription
-faster-whisper-xxl.exe audio.wav --language English --model base
+faster-whisper-xxl.exe audio.wav --language English --model distil-large-v3
+
+# With speaker diarization (recommended for meetings)
+faster-whisper-xxl.exe audio.wav \
+  --language English \
+  --model distil-large-v3 \
+  --diarize true \
+  --min_speakers 2 \
+  --max_speakers 6 \
+  --output_format srt
 
 # With advanced options
 faster-whisper-xxl.exe audio.wav \
   --language English \
-  --model medium \
+  --model distil-large-v3 \
   --output_format json \
   --word_timestamps true \
   --vad_filter true
@@ -1098,11 +1191,17 @@ if (result.error) {
 ### Model Sizes Quick Reference
 
 ```
-tiny   →  75MB  → ~1GB RAM  → Fast & Draft quality
-base   → 150MB  → ~1GB RAM  → Fast & Good quality ⭐ Recommended
-small  → 500MB  → ~2GB RAM  → Moderate & Better quality
-medium → 1.5GB  → ~5GB RAM  → Slow & Great quality
-large  → 3GB    → ~10GB RAM → Slowest & Best quality
+Standard Models:
+tiny          →  75MB  → ~1GB RAM   → Fast & Draft quality
+base.en       → 150MB  → ~1-2GB RAM → Fast & Good quality (English)
+small.en      → 500MB  → ~2-3GB RAM → Fast & Better quality (English)
+medium.en     → 1.5GB  → ~5-6GB RAM → Moderate & Great quality (English)
+large-v3      → 3GB    → ~10GB RAM  → Slow & Best quality
+
+Distilled (Optimized):
+distil-small.en   → 350MB  → ~2GB RAM   → Very Fast & Good quality (English)
+distil-medium.en  → 800MB  → ~4-5GB RAM → Fast & Great quality (English)
+distil-large-v3   → 1.5GB  → ~6-8GB RAM → Moderate & Best quality ⭐ Recommended
 ```
 
 ---
