@@ -3,14 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+export interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
 interface ChatProps {
   transcript: string;
   disabled?: boolean;
-}
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
+  messages?: Message[];
+  onMessagesUpdate?: (messages: Message[]) => void;
+  fullHeight?: boolean;
 }
 
 const SYSTEM_PROMPT = `You are an AI meeting assistant helping users review and analyze their meeting transcripts from platforms like Microsoft Teams, Zoom, and Google Meet. 
@@ -30,12 +33,23 @@ Your role is to:
 
 Be understanding of transcription imperfections and make reasonable inferences based on context. If something is unclear, mention it and provide your best interpretation.`;
 
-function Chat({ transcript, disabled = false }: ChatProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+function Chat({
+  transcript,
+  disabled = false,
+  messages: externalMessages = [],
+  onMessagesUpdate,
+  fullHeight = false,
+}: ChatProps) {
+  const [messages, setMessages] = useState<Message[]>(externalMessages);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Sync with external messages
+  useEffect(() => {
+    setMessages(externalMessages);
+  }, [externalMessages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,12 +58,6 @@ function Chat({ transcript, disabled = false }: ChatProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Clear messages when transcript changes
-  useEffect(() => {
-    setMessages([]);
-    setError("");
-  }, [transcript]);
 
   const sendMessage = async () => {
     if (!inputValue.trim() || isLoading || disabled) return;
@@ -60,7 +68,11 @@ function Chat({ transcript, disabled = false }: ChatProps) {
     };
 
     // Add user message to chat
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    if (onMessagesUpdate) {
+      onMessagesUpdate(updatedMessages);
+    }
     setInputValue("");
     setIsLoading(true);
     setError("");
@@ -108,7 +120,11 @@ function Chat({ transcript, disabled = false }: ChatProps) {
         content: data.choices?.[0]?.message?.content || "No response received.",
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      const finalMessages = [...updatedMessages, assistantMessage];
+      setMessages(finalMessages);
+      if (onMessagesUpdate) {
+        onMessagesUpdate(finalMessages);
+      }
     } catch (err) {
       console.error("Error sending message:", err);
       setError(
@@ -128,6 +144,109 @@ function Chat({ transcript, disabled = false }: ChatProps) {
     }
   };
 
+  // Full height mode: fill available space without card wrapper
+  if (fullHeight) {
+    return (
+      <div className="h-full flex flex-col bg-background p-6">
+        {disabled && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center p-8 bg-card border border-border rounded-lg text-muted-foreground">
+              Start chatting chat box
+            </div>
+          </div>
+        )}
+
+        {!disabled && (
+          <>
+            {/* Messages Container - Takes all available space */}
+            <div className="flex-1 overflow-y-auto mb-4 space-y-3 scrollbar-thin">
+              {messages.length === 0 && (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center p-8 bg-card border border-border rounded-lg text-muted-foreground max-w-md">
+                    <p className="mb-4 text-foreground">
+                      Ask me anything about the meeting!
+                    </p>
+                    <p className="text-sm">
+                      Try "Summarize the key points" or "What were the action
+                      items?"
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  <div
+                    className={`max-w-[70%] p-4 rounded-lg border ${
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
+                    }`}
+                  >
+                    <div className="text-xs font-semibold mb-2 uppercase tracking-wide opacity-70">
+                      {message.role === "user" ? "You" : "AI Assistant"}
+                    </div>
+                    <div className="whitespace-pre-wrap break-words leading-relaxed">
+                      {message.content}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="max-w-[70%] p-4 rounded-lg bg-muted border border-border">
+                    <div className="text-xs font-semibold mb-2 uppercase tracking-wide opacity-70 text-muted-foreground">
+                      AI Assistant
+                    </div>
+                    <div className="flex gap-1 items-center py-2">
+                      <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0ms]"></span>
+                      <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:150ms]"></span>
+                      <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:300ms]"></span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="p-4 bg-destructive/10 border border-destructive rounded-lg text-destructive text-sm">
+                  <strong>Error:</strong> {error}
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Container - Fixed at bottom */}
+            <div className="flex gap-3 items-center">
+              <Input
+                type="text"
+                placeholder="Ask a question about the meeting..."
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={!inputValue.trim() || isLoading}
+              >
+                Send
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Card mode: original layout
   return (
     <Card className="w-full mt-6">
       <CardHeader>

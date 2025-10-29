@@ -32,8 +32,21 @@ export interface AudioCaptureAPI {
   removeTranscriptionProgressListener: () => void;
 }
 
+export interface Recording {
+  id: string;
+  fileName: string;
+  date: string;
+  title: string;
+}
+
+export interface RecordingsAPI {
+  getRecordings: () => Promise<Recording[]>;
+  getRecordingTranscript: (recordingId: string) => Promise<string>;
+}
+
 declare global {
   interface Window {
     audioCapture: AudioCaptureAPI;
+    recordings: RecordingsAPI;
   }
 }

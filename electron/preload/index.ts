@@ -42,6 +42,13 @@ contextBridge.exposeInMainWorld("audioCapture", {
   },
 });
 
+// --------- Recordings Management API ---------
+contextBridge.exposeInMainWorld("recordings", {
+  getRecordings: () => ipcRenderer.invoke("get-recordings"),
+  getRecordingTranscript: (recordingId: string) =>
+    ipcRenderer.invoke("get-recording-transcript", recordingId),
+});
+
 // --------- Preload scripts loading ---------
 function domReady(
   condition: DocumentReadyState[] = ["complete", "interactive"]

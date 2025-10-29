@@ -14,9 +14,13 @@ type RecordingMode = "system" | "microphone";
 
 interface AudioCaptureProps {
   onTranscriptUpdate?: (transcript: string) => void;
+  inline?: boolean;
 }
 
-function AudioCapture({ onTranscriptUpdate }: AudioCaptureProps) {
+function AudioCapture({
+  onTranscriptUpdate,
+  inline = false,
+}: AudioCaptureProps) {
   const [recordingState, setRecordingState] = useState<RecordingState>({
     isRecording: false,
     isTranscribing: false,
@@ -380,6 +384,36 @@ function AudioCapture({ onTranscriptUpdate }: AudioCaptureProps) {
       .padStart(2, "0")}`;
   };
 
+  // Inline mode: just show the button in the top bar
+  if (inline) {
+    return (
+      <div className="flex items-center gap-3">
+        {!recordingState.isRecording ? (
+          <Button
+            onClick={startRecording}
+            disabled={recordingState.isTranscribing}
+            variant="outline"
+          >
+            {recordingState.isTranscribing
+              ? "Processing..."
+              : "Start recording"}
+          </Button>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 border border-destructive rounded text-destructive text-sm">
+              <span className="w-2 h-2 bg-destructive rounded-full animate-pulse"></span>
+              {formatDuration(recordingState.recordingDuration)}
+            </div>
+            <Button onClick={stopRecording} variant="destructive" size="sm">
+              Stop
+            </Button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Full mode: show complete card interface
   return (
     <Card className="w-full">
       <CardHeader>

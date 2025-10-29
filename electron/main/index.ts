@@ -403,3 +403,85 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
     };
   }
 });
+
+// --------- Recordings Management IPC Handlers ---------
+ipcMain.handle("get-recordings", async () => {
+  try {
+    const recordingsDir = path.join(process.env.APP_ROOT || "", "recordings");
+
+    // Create the directory if it doesn't exist
+    if (!fs.existsSync(recordingsDir)) {
+      fs.mkdirSync(recordingsDir, { recursive: true });
+      return [];
+    }
+
+    // Read all files in the recordings directory
+    const files = fs.readdirSync(recordingsDir);
+
+    // Filter for .txt files (transcripts) and extract metadata
+    const recordings = files
+      .filter((file) => file.endsWith(".txt"))
+      .map((file) => {
+        const filePath = path.join(recordingsDir, file);
+        const stats = fs.statSync(filePath);
+
+        // Extract date from filename (format: recording_YYYY-MM-DD_HH-MM-SS.txt)
+        const match = file.match(
+          /recording_(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2}-\d{2})/
+        );
+        let date = stats.mtime; // fallback to file modification time
+
+        if (match) {
+          const [, dateStr, timeStr] = match;
+          const [year, month, day] = dateStr.split("-");
+          const [hour, minute, second] = timeStr.split("-");
+          date = new Date(
+            parseInt(year),
+            parseInt(month) - 1,
+            parseInt(day),
+            parseInt(hour),
+            parseInt(minute),
+            parseInt(second)
+          );
+        }
+
+        return {
+          id: file.replace(".txt", ""),
+          fileName: file,
+          date: date.toISOString(),
+          title: `Recording ${date.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })}`,
+        };
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date, newest first
+
+    return recordings;
+  } catch (error) {
+    console.error("Error getting recordings:", error);
+    throw error;
+  }
+});
+
+ipcMain.handle(
+  "get-recording-transcript",
+  async (_event, recordingId: string) => {
+    try {
+      const recordingsDir = path.join(process.env.APP_ROOT || "", "recordings");
+      const transcriptPath = path.join(recordingsDir, `${recordingId}.txt`);
+
+      if (!fs.existsSync(transcriptPath)) {
+        throw new Error(`Transcript not found: ${transcriptPath}`);
+      }
+
+      const transcript = fs.readFileSync(transcriptPath, "utf-8");
+      return transcript;
+    } catch (error) {
+      console.error("Error reading transcript:", error);
+      throw error;
+    }
+  }
+);
