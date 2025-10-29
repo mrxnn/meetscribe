@@ -34,6 +34,23 @@ npm install
 npm run dev
 ```
 
+## ⚙️ Environment Configuration
+
+This application requires an API key for the LLM chat feature:
+
+1. Copy the example environment file:
+
+   ```sh
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and replace `your_bearer_token_here` with your actual API key:
+   ```
+   VITE_LLM_API_KEY=your_actual_api_key_here
+   ```
+
+**Note:** The `.env` file is gitignored and will not be committed to version control.
+
 ## 🐞 Debug
 
 ![electron-vite-react-debug.gif](/electron-vite-react-debug.gif)

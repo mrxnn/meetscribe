@@ -84,7 +84,7 @@ function Chat({ transcript, disabled = false }: ChatProps) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer key`,
+            Authorization: `Bearer ${import.meta.env.VITE_LLM_API_KEY}`,
           },
           body: JSON.stringify({
             model: "openai/gpt-oss-120b",

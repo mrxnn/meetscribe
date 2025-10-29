@@ -14,6 +14,10 @@ dist-electron
 release
 *.local
 
+# Environment variables
+.env
+.env.local
+
 # Audio recordings
 recordings
 resources
