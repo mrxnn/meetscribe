@@ -342,18 +342,8 @@ function AudioCapture() {
         setError(result.error);
         setTranscript(`❌ Transcription failed: ${result.error}`);
       } else {
-        // Display transcript with file location info
-        const audioFileName = filePath.split(/[\\/]/).pop() || "unknown";
-        const transcriptFileName =
-          result.transcriptPath?.split(/[\\/]/).pop() || "unknown.srt";
-
-        setTranscript(
-          `📁 Files saved to recordings folder:\n` +
-            `🎵 Audio: ${audioFileName}\n` +
-            `📝 Transcript (with speakers): ${transcriptFileName}\n\n` +
-            `─────────────────────────────────\n\n` +
-            `${result.text}`
-        );
+        // Display just the cleaned transcript content
+        setTranscript(result.text);
       }
 
       setRecordingState((prev) => ({ ...prev, isTranscribing: false }));
@@ -381,8 +371,9 @@ function AudioCapture() {
       <div className="info-banner">
         <p>
           <strong>System Audio Mode:</strong> Captures both system audio AND
-          your microphone (perfect for MS Teams calls!). Recordings are saved to
-          the <code>recordings</code> folder in your project directory.
+          your microphone (perfect for MS Teams calls!). Each recording creates
+          a <code>.wav</code> audio file and a <code>.txt</code> transcript in
+          the <code>recordings</code> folder.
         </p>
       </div>
 

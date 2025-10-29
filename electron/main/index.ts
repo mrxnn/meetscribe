@@ -145,6 +145,39 @@ ipcMain.handle("open-win", (_, arg) => {
   }
 });
 
+// --------- Helper Functions ---------
+/**
+ * Cleans the transcript by extracting only the actual transcribed text
+ * Removes Faster-Whisper system messages and metadata
+ */
+function cleanTranscript(rawTranscript: string): string {
+  const lines = rawTranscript.split("\n");
+  const transcriptLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+
+    // Extract lines with timestamps in format: [HH:MM:SS.mmm --> HH:MM:SS.mmm]
+    if (trimmedLine.match(/^\[[\d:.]+ --> [\d:.]+\]/)) {
+      transcriptLines.push(trimmedLine);
+    }
+  }
+
+  // Join and format the transcript
+  const cleanedTranscript = transcriptLines
+    .map((line) => {
+      // Extract just the text part after the timestamp
+      const match = line.match(/^\[([\d:.]+) --> ([\d:.]+)\]\s*(.+)$/);
+      if (match) {
+        return match[3].trim(); // Return just the text
+      }
+      return line;
+    })
+    .join("\n");
+
+  return cleanedTranscript.trim();
+}
+
 // --------- Audio Capture IPC Handlers ---------
 ipcMain.handle("get-audio-sources", async () => {
   try {
@@ -241,7 +274,7 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
       "--language",
       "English",
       "--model",
-      "distil-large-v2",
+      "medium",
       "--output_format",
       "srt",
       "--output_dir",
@@ -306,11 +339,11 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
     const baseName = path.basename(filePath, path.extname(filePath));
     const transcriptPath = path.join(path.dirname(filePath), `${baseName}.txt`);
 
-    let transcriptText = "";
+    let rawTranscriptText = "";
     if (fs.existsSync(transcriptPath)) {
-      transcriptText = fs.readFileSync(transcriptPath, "utf-8");
+      rawTranscriptText = fs.readFileSync(transcriptPath, "utf-8");
 
-      // Clean up the transcript file
+      // Clean up the temporary transcript file
       try {
         fs.unlinkSync(transcriptPath);
       } catch (cleanupError) {
@@ -318,17 +351,27 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
       }
     } else {
       // Fallback to stdout if no file was created
-      transcriptText = outputText;
+      rawTranscriptText = outputText;
     }
 
-    // Save transcript to file with same name as audio file
+    // Clean the transcript to remove system messages
+    const cleanedTranscript = cleanTranscript(rawTranscriptText);
+
+    // Console log the cleaned transcript content
+    console.log("\n" + "=".repeat(60));
+    console.log("📝 TRANSCRIPT CONTENT:");
+    console.log("=".repeat(60));
+    console.log(cleanedTranscript);
+    console.log("=".repeat(60) + "\n");
+
+    // Save cleaned transcript to file with same name as audio file
     const transcriptSavePath = path.join(
       path.dirname(filePath),
       `${baseName}.txt`
     );
 
     try {
-      fs.writeFileSync(transcriptSavePath, transcriptText.trim(), "utf-8");
+      fs.writeFileSync(transcriptSavePath, cleanedTranscript, "utf-8");
       console.log("✅ Transcript saved to:", transcriptSavePath);
     } catch (saveError) {
       console.error("Error saving transcript file:", saveError);
@@ -344,7 +387,7 @@ ipcMain.handle("transcribe-audio", async (event, filePath: string) => {
     console.log("✅ Audio file preserved at:", filePath);
 
     return {
-      text: transcriptText.trim(),
+      text: cleanedTranscript,
       transcriptPath: transcriptSavePath,
     };
   } catch (error) {
