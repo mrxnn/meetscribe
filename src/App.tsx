@@ -127,7 +127,10 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden lg:ml-[288px]">
         {/* Top Bar with Recording Controls */}
-        <div className="border-b border-border bg-card p-4">
+        <div
+          className="border-b-2 bg-card p-4"
+          style={{ borderBottom: "1px solid #e5e7eb" }}
+        >
           <div className="flex items-center justify-end">
             <AudioCapture onTranscriptUpdate={handleTranscriptUpdate} inline />
           </div>

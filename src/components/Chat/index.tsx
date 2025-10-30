@@ -2,6 +2,15 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export interface Message {
   role: "user" | "assistant";
@@ -30,6 +39,7 @@ Your role is to:
 3. Identify participants and their contributions when possible
 4. Summarize important information in a clear, organized manner
 5. Ask for clarification when the transcript is ambiguous or unclear
+6. Always answer in short and concise manner.
 
 Be understanding of transcription imperfections and make reasonable inferences based on context. If something is unclear, mention it and provide your best interpretation.`;
 
@@ -93,7 +103,7 @@ function Chat({
       ];
 
       const response = await fetch(
-        "https://agent.ai.prontocloud.io/v1/chat/completions",
+        "https://api.mistral.ai/v1/chat/completions",
         {
           method: "POST",
           headers: {
@@ -101,7 +111,7 @@ function Chat({
             Authorization: `Bearer ${import.meta.env.VITE_LLM_API_KEY}`,
           },
           body: JSON.stringify({
-            model: "openai/gpt-oss-120b",
+            model: "mistral-large-latest",
             messages: apiMessages,
             temperature: 0.7,
           }),
@@ -159,7 +169,7 @@ function Chat({
         {!disabled && (
           <>
             {/* Messages Container - Takes all available space */}
-            <div className="flex-1 overflow-y-auto mb-4 space-y-3 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto no-scrollbar mb-4 space-y-3 scrollbar-thin">
               {messages.length === 0 && (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center p-8 bg-card border border-border rounded-lg text-muted-foreground max-w-md">
@@ -223,22 +233,51 @@ function Chat({
             </div>
 
             {/* Input Container - Fixed at bottom */}
-            <div className="flex gap-3 items-center">
-              <Input
-                type="text"
-                placeholder="Ask a question about the meeting..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading}
-                className="flex-1"
-              />
-              <Button
-                onClick={sendMessage}
-                disabled={!inputValue.trim() || isLoading}
-              >
-                Send
-              </Button>
+            <div className="space-y-2 mb-4">
+              <div className="flex gap-3 items-center">
+                <Input
+                  type="text"
+                  placeholder="Ask a question about the meeting..."
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isLoading}
+                  className="flex-1"
+                />
+                <Button
+                  className="h-12 ring-4 ring-neutral-900 px-8"
+                  onClick={sendMessage}
+                  disabled={!inputValue.trim() || isLoading}
+                >
+                  Send
+                </Button>
+              </div>
+
+              {/* Show Transcript Link */}
+              {transcript && (
+                <div className="fixed left-[296px] bottom-1">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="text-xs text-muted-foreground bg-transparent outline-none ring-0 hover:outline-none hover:ring-0">
+                        Show transcript
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl max-h-[80vh]">
+                      <DialogHeader>
+                        <DialogTitle>Meeting Transcript</DialogTitle>
+                        <DialogDescription>
+                          Full transcript of the recorded meeting
+                        </DialogDescription>
+                      </DialogHeader>
+                      <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {transcript}
+                        </div>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -332,22 +371,50 @@ function Chat({
             </div>
 
             {/* Input Container */}
-            <div className="flex gap-3 items-center">
-              <Input
-                type="text"
-                placeholder="Ask a question about the meeting..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading}
-                className="flex-1"
-              />
-              <Button
-                onClick={sendMessage}
-                disabled={!inputValue.trim() || isLoading}
-              >
-                Send
-              </Button>
+            <div className="space-y-2">
+              <div className="flex gap-3 items-center">
+                <Input
+                  type="text"
+                  placeholder="Ask a question about the meeting..."
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isLoading}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={!inputValue.trim() || isLoading}
+                >
+                  Send
+                </Button>
+              </div>
+
+              {/* Show Transcript Link */}
+              {transcript && (
+                <div className="flex justify-center">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="text-xs text-muted-foreground hover:text-foreground underline transition-colors">
+                        Show transcript
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl max-h-[80vh]">
+                      <DialogHeader>
+                        <DialogTitle>Meeting Transcript</DialogTitle>
+                        <DialogDescription>
+                          Full transcript of the recorded meeting
+                        </DialogDescription>
+                      </DialogHeader>
+                      <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {transcript}
+                        </div>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              )}
             </div>
           </div>
         )}

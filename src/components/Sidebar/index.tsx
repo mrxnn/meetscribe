@@ -48,20 +48,18 @@ function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 h-screen bg-[#0a0a0a] border-r border-border z-40 transition-transform duration-300 ease-in-out",
+          "fixed top-0 left-0 h-screen bg-neutral-900 border-r border-border z-40 transition-transform duration-300 ease-in-out",
           "w-72 flex flex-col",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-border">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Recordings
-          </h2>
+        <div className="px-4 border-b border-border">
+          <h2 className="text-2xl font-black text-blue-500">MeetScribe.</h2>
         </div>
 
         {/* Recordings List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <div className="flex-1 overflow-y-scroll no-scrollbar px-4 space-y-2">
           {meetings.length === 0 ? (
             <div className="p-6 text-center text-muted-foreground text-sm">
               No recordings yet. Start recording to create your first
@@ -72,13 +70,27 @@ function Sidebar({
               <div
                 key={recording.id}
                 className={cn(
-                  "p-3 rounded-md border border-border bg-card cursor-pointer transition-colors",
-                  "hover:bg-accent hover:text-accent-foreground",
+                  "bg-neutral-800 text-neutral-300 px-4 py-4 rounded cursor-pointer flex items-center gap-2",
                   currentMeetingId === recording.id &&
-                    "bg-accent text-accent-foreground"
+                    "bg-blue-500 text-neutral-200"
                 )}
                 onClick={() => onSelectMeeting(recording.id)}
               >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  className="size-5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3.75 9h16.5m-16.5 6.75h16.5"
+                  />
+                </svg>
+
                 <span className="text-sm">{recording.title}</span>
               </div>
             ))
